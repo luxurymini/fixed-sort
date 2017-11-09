@@ -42,6 +42,8 @@ module.exports = function fixed(dispatch) {
 	dispatch.hook('S_INVEN', '*', event => {
 		invenSize = event.size;
 		invenId = event.id;
+		if (event.first) itemList = [];
+
 		if (event.more) {
 			itemList = event.items.filter(x => x.slot >= 40);
 		} else {
@@ -71,6 +73,8 @@ module.exports = function fixed(dispatch) {
 	 *******************************************************/
 	function* fixedSort() {
 		const maxRows = invenSize / 8;
+		console.log(itemList.length);
+
 		for (const fixedItem of fixedItemList) {
 			let isSend = false;
 			for (const id of fixedItem.id) {
@@ -78,8 +82,8 @@ module.exports = function fixed(dispatch) {
 					(maxRows - fixedItem.row - 1) * 8 + fixedItem.col + 40;
 
 				const list = itemList
-					.filter(x => x.dbid === id && x.slot < toSlot)
-					.sort((a, b) => b.amount - a.amount);
+					.filter(x => x.dbid === id && x.slot !== toSlot)
+					.sort((a, b) => a.slot - b.slot);
 
 				// 해당 물건이 없으면
 				if (list.length === 0) continue;
@@ -87,8 +91,10 @@ module.exports = function fixed(dispatch) {
 				// 현재 위치 아이템이랑 동일 아이템일경우 스텍이 많은것으로함
 				// 현재 것이 더 많거나 같으면 break;
 				// TODO: NEDD TEST
-				const currnt = itemList.find(x => x.slot === toSlot);
-				if (find && currnt.amount >= list[0].amount) break;
+				const currnt = itemList.find(
+					x => x.slot === toSlot && x.dbid === id
+				);
+				if (currnt && currnt.amount >= list[0].amount) break;
 
 				isSend = true;
 				dispatch.toServer('C_MOVE_INVEN_POS', '*', {
@@ -99,5 +105,7 @@ module.exports = function fixed(dispatch) {
 			}
 			if (isSend) yield;
 		}
+
+		isSort = false;
 	}
 };
